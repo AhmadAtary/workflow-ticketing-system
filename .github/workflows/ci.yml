@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/**
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API client
+        run: pnpm codegen
+
+      - name: Build API client package
+        run: pnpm --filter @flowdesk/api-client run build
+
+      - name: Lint frontend
+        run: pnpm --filter @flowdesk/frontend run lint
+
+      - name: Run frontend tests
+        run: pnpm --filter @flowdesk/frontend run test
+
+      - name: Typecheck frontend
+        run: pnpm --filter @flowdesk/frontend run typecheck
+
+      - name: Build frontend
+        run: pnpm --filter @flowdesk/frontend run build
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: bcmath, intl, pcntl, pdo_pgsql, pgsql, zip
+          coverage: none
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache/files
+            backend/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare application environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Run Pint
+        run: composer lint
+
+      - name: Run Larastan
+        run: composer analyse
+
+      - name: Run Pest
+        run: composer test

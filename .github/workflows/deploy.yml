@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy
+        required: true
+        default: latest
+      compose_path:
+        description: Absolute path to the deployed repository on the server
+        required: true
+        default: /srv/flowdesk
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            export APP_IMAGE=ghcr.io/${{ github.repository_owner }}/flowdesk-app:${{ github.event.inputs.image_tag }}
+            export WEB_IMAGE=ghcr.io/${{ github.repository_owner }}/flowdesk-web:${{ github.event.inputs.image_tag }}
+            cd ${{ github.event.inputs.compose_path }}
+            docker compose pull app queue scheduler nginx
+            docker compose up -d
+            curl --fail --silent --show-error http://localhost:8080/api/v1/healthz
