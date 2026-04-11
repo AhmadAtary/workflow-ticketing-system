@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/Http/Controllers/Api/V1
+        - app/Services/Auth
+        - app/Support
+    level: 2
+    tmpDir: storage/phpstan
+    treatPhpDocTypesAsCertain: false
