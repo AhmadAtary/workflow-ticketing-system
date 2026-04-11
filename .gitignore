@@ -37,8 +37,10 @@ backend/storage/framework/sessions/
 backend/storage/framework/testing/
 backend/storage/framework/views/
 backend/storage/app/private/
+backend/storage/phpstan/
 backend/bootstrap/cache/*
 !backend/bootstrap/cache/.gitignore
+backend/database/*.sqlite
 
 # Logs
 *.log
