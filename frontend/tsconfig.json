@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": ["src/**/*", "eslint.config.mjs", "vitest.config.ts"],
+  "exclude": ["node_modules", "build", "dist"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client", "vitest/globals"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "references": [
+    {
+      "path": "../packages/api-client"
+    }
+  ]
+}
