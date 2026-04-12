@@ -39,6 +39,8 @@ COPY backend ./
 COPY docker/app/entrypoint.sh /usr/local/bin/app-entrypoint
 
 RUN chmod +x /usr/local/bin/app-entrypoint \
+    && sed -i 's/\r$//' /usr/local/bin/app-entrypoint \
+    && sed -ri 's!^listen = .*!listen = 9000!' /usr/local/etc/php-fpm.d/www.conf \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data /var/www/backend \
     && chmod -R ug+rwx storage bootstrap/cache

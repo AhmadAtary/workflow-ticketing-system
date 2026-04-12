@@ -12,6 +12,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, GitMerge, ChevronRight, MoreHorizontal, Pencil, Trash2, GripVertical, ArrowRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import { ApiHttpError } from "@/shared/api/http";
+
+const UNASSIGNED_TEAM_VALUE = "__unassigned__";
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiHttpError) {
+    const payload = error.payload;
+    const problem = payload && typeof payload === "object" ? payload : null;
+    const firstValidationError = problem?.errors
+      ? Object.values(problem.errors)[0]?.[0]
+      : null;
+
+    return firstValidationError ?? problem?.detail ?? fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 function getStatusBadge(status: string) {
   const cfg: Record<string, { label: string; class: string }> = {
@@ -59,18 +80,49 @@ export default function AdminWorkflows() {
     setShowEdit(wf);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.name || steps.length === 0) { toast({ title: "Name and at least one step required", variant: "destructive" }); return; }
-    addWorkflow({ id: `wf-${Date.now()}`, name: form.name, description: form.description, status: form.status as any, steps: steps.map((s, i) => ({ ...s, order: i + 1 })), taskCount: 0, createdAt: new Date().toISOString() });
-    toast({ title: "Workflow created" });
-    setShowCreate(false);
+
+    try {
+      await addWorkflow({
+        id: `wf-${Date.now()}`,
+        name: form.name,
+        description: form.description,
+        status: form.status as any,
+        steps: steps.map((s, i) => ({ ...s, order: i + 1 })),
+        taskCount: 0,
+        createdAt: new Date().toISOString(),
+      });
+      toast({ title: "Workflow created" });
+      setShowCreate(false);
+    } catch (error) {
+      toast({
+        title: "Failed to create workflow",
+        description: getErrorMessage(error, "Unable to create workflow."),
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!form.name) { toast({ title: "Name required", variant: "destructive" }); return; }
-    updateWorkflow(showEdit.id, { name: form.name, description: form.description, status: form.status as any, steps: steps.map((s, i) => ({ ...s, order: i + 1 })) });
-    toast({ title: "Workflow updated" });
-    setShowEdit(null);
+
+    try {
+      await updateWorkflow(showEdit.id, {
+        name: form.name,
+        description: form.description,
+        status: form.status as any,
+        steps: steps.map((s, i) => ({ ...s, order: i + 1 })),
+      });
+      toast({ title: "Workflow updated" });
+      setShowEdit(null);
+    } catch (error) {
+      toast({
+        title: "Failed to update workflow",
+        description: getErrorMessage(error, "Unable to update workflow."),
+        variant: "destructive",
+      });
+    }
   };
 
   const WorkflowFormContent = () => (
@@ -131,10 +183,13 @@ export default function AdminWorkflows() {
               </div>
               <div>
                 <Label className="text-xs">Assigned Team</Label>
-                <Select value={step.teamId} onValueChange={v => updateStep(idx, "teamId", v)}>
+                <Select
+                  value={step.teamId || UNASSIGNED_TEAM_VALUE}
+                  onValueChange={v => updateStep(idx, "teamId", v === UNASSIGNED_TEAM_VALUE ? "" : v)}
+                >
                   <SelectTrigger className="mt-0.5 h-8 text-sm"><SelectValue placeholder="Select team" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value={UNASSIGNED_TEAM_VALUE}>Unassigned</SelectItem>
                     {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -255,7 +310,24 @@ export default function AdminWorkflows() {
           <p className="text-muted-foreground text-sm">Delete <strong>{deleteConfirm?.name}</strong>? This cannot be undone.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { deleteWorkflow(deleteConfirm.id); toast({ title: "Workflow deleted" }); setDeleteConfirm(null); }}>Delete</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await deleteWorkflow(deleteConfirm.id);
+                  toast({ title: "Workflow deleted" });
+                  setDeleteConfirm(null);
+                } catch (error) {
+                  toast({
+                    title: "Failed to delete workflow",
+                    description: getErrorMessage(error, "Unable to delete workflow."),
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

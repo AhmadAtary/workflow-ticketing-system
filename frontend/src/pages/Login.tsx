@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocation } from "wouter";
 import { useAuth } from "../contexts/AuthContext";
+import { useBranding } from "@/app/branding";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -17,9 +19,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
+  const { companyName, logoUrl } = useBranding();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [, setLocation] = useLocation();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -33,7 +37,8 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(data.email, data.password);
+      const loggedInUser = await login(data.email, data.password);
+      setLocation(loggedInUser.role === "admin" ? "/admin/dashboard" : "/dashboard");
       toast({
         title: "Welcome back",
         description: "You have successfully logged in.",
@@ -49,11 +54,29 @@ export default function Login() {
     }
   };
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setLocation(user.role === "admin" ? "/admin/dashboard" : "/dashboard");
+  }, [user, setLocation]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary tracking-tight mb-2">FlowDesk</h1>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={`${companyName} logo`}
+              className="mx-auto mb-3 h-14 w-14 rounded object-contain bg-white p-1 shadow-sm"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          <h1 className="text-3xl font-bold text-primary tracking-tight mb-2">{companyName}</h1>
           <p className="text-muted-foreground">Enterprise Workflow Engine</p>
         </div>
 

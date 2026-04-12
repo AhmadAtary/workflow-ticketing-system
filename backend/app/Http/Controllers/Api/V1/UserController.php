@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\User\StoreUserRequest;
@@ -17,6 +18,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
+    private function normalizeRole(mixed $role): string
+    {
+        return $role instanceof RoleName ? $role->value : (string) $role;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $paginator = User::query()
@@ -48,7 +54,7 @@ class UserController extends Controller
             'status' => UserStatus::Active,
         ]);
 
-        $user->syncRoles([$payload['role']->value]);
+        $user->syncRoles([$this->normalizeRole($payload['role'])]);
 
         return ApiResponse::success(
             new UserResource($user->load('team', 'roles')),
@@ -78,7 +84,7 @@ class UserController extends Controller
         $user->update($updates);
 
         if (isset($payload['role'])) {
-            $user->syncRoles([$payload['role']->value]);
+            $user->syncRoles([$this->normalizeRole($payload['role'])]);
         }
 
         return ApiResponse::success(new UserResource($user->fresh()->load('team', 'roles')));

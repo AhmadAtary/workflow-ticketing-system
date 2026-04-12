@@ -115,14 +115,17 @@ Backend environment:
 - `CORS_ALLOWED_ORIGINS`
 - `MAIL_*`
 
-### Seeded Accounts
+### Seeded Account
 
-`php artisan migrate --seed` creates local development users:
+`php artisan migrate --seed` creates one admin user:
 
-- `admin@flowdesk.test` / `Password123!`
-- `operations@flowdesk.test` / `Password123!`
-- `compliance@flowdesk.test` / `Password123!`
-- `finance@flowdesk.test` / `Password123!`
+- `atary.avxav@gmail.com` / `Atary@2912`
+
+You can override this without code changes by setting:
+
+- `FLOWDESK_ADMIN_NAME`
+- `FLOWDESK_ADMIN_EMAIL`
+- `FLOWDESK_ADMIN_PASSWORD`
 
 ## Docker
 

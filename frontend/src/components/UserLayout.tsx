@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, CheckSquare, Bell, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
+import { useBranding } from "@/app/branding";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { notifications } = useData();
+  const { companyName, logoUrl } = useBranding();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -26,7 +28,19 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="font-bold text-xl text-primary tracking-tight">FlowDesk</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {logoUrl ? (
+                    <img
+                      src={logoUrl}
+                      alt={`${companyName} logo`}
+                      className="h-8 w-8 rounded object-contain bg-white p-0.5"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+                  <span className="font-bold text-xl text-primary tracking-tight truncate">{companyName}</span>
+                </div>
               </div>
               <nav className="hidden sm:ml-8 sm:flex sm:space-x-4">
                 {navItems.map((item) => {

@@ -80,6 +80,28 @@ function ProtectedRoute({
   );
 }
 
+function GuestRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
+}) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  if (user) {
+    return <Redirect to={user.role === "admin" ? "/admin/dashboard" : "/dashboard"} />;
+  }
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Component />
+    </Suspense>
+  );
+}
+
 function RootRedirect() {
   const { user, isLoading } = useAuth();
 
@@ -98,7 +120,9 @@ function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/login" component={Login} />
+        <Route path="/login">
+          {() => <GuestRoute component={Login} />}
+        </Route>
 
         <Route path="/admin/dashboard">
           {() => <ProtectedRoute component={AdminDashboard} layout={AdminLayout} allowedRole="admin" />}

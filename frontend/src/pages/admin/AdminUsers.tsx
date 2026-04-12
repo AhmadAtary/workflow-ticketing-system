@@ -12,6 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ApiHttpError } from "@/shared/api/http";
+
+const NO_TEAM_VALUE = "__no_team__";
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiHttpError) {
+    const payload = error.payload;
+    const problem = payload && typeof payload === "object" ? payload : null;
+    const firstValidationError = problem?.errors
+      ? Object.values(problem.errors)[0]?.[0]
+      : null;
+
+    return firstValidationError ?? problem?.detail ?? fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function AdminUsers() {
   const { users, teams, addUser, updateUser, deleteUser } = useData();
@@ -40,47 +61,63 @@ export default function AdminUsers() {
     return true;
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!form.name || !form.email || !form.password) {
       toast({ title: "Name, email, and password are required", variant: "destructive" });
       return;
     }
 
-    void addUser({
-      id: `user-${Date.now()}`,
-      name: form.name,
-      email: form.email,
-      role: form.role as any,
-      teamId: form.teamId || undefined,
-      password: form.password,
-      teamName: teams.find((team) => team.id === form.teamId)?.name,
-      status: "active",
-      avatar: `https://i.pravatar.cc/150?u=${form.email}`,
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      await addUser({
+        id: `user-${Date.now()}`,
+        name: form.name,
+        email: form.email,
+        role: form.role as any,
+        teamId: form.teamId || undefined,
+        password: form.password,
+        teamName: teams.find((team) => team.id === form.teamId)?.name,
+        status: "active",
+        avatar: `https://i.pravatar.cc/150?u=${form.email}`,
+        createdAt: new Date().toISOString(),
+      });
 
-    toast({ title: "User created" });
-    setShowCreate(false);
-    setForm({ name: "", email: "", role: "user", teamId: "", password: "" });
+      toast({ title: "User created" });
+      setShowCreate(false);
+      setForm({ name: "", email: "", role: "user", teamId: "", password: "" });
+    } catch (error) {
+      toast({
+        title: "Failed to create user",
+        description: getErrorMessage(error, "Unable to create user."),
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!form.name || !form.email) {
       toast({ title: "Name and email are required", variant: "destructive" });
       return;
     }
 
-    void updateUser(showEdit.id, {
-      name: form.name,
-      email: form.email,
-      role: form.role as any,
-      teamId: form.teamId || undefined,
-      teamName: teams.find((team) => team.id === form.teamId)?.name,
-      password: form.password || undefined,
-    });
+    try {
+      await updateUser(showEdit.id, {
+        name: form.name,
+        email: form.email,
+        role: form.role as any,
+        teamId: form.teamId || undefined,
+        teamName: teams.find((team) => team.id === form.teamId)?.name,
+        password: form.password || undefined,
+      });
 
-    toast({ title: "User updated" });
-    setShowEdit(null);
+      toast({ title: "User updated" });
+      setShowEdit(null);
+    } catch (error) {
+      toast({
+        title: "Failed to update user",
+        description: getErrorMessage(error, "Unable to update user."),
+        variant: "destructive",
+      });
+    }
   };
 
   const openEdit = (user: any) => {
@@ -233,10 +270,15 @@ export default function AdminUsers() {
                 </div>
                 <div>
                   <Label>Team</Label>
-                  <Select value={form.teamId} onValueChange={(value) => setForm((current) => ({ ...current, teamId: value }))}>
+                  <Select
+                    value={form.teamId || NO_TEAM_VALUE}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, teamId: value === NO_TEAM_VALUE ? "" : value }))
+                    }
+                  >
                     <SelectTrigger className="mt-1"><SelectValue placeholder="Select team" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Team</SelectItem>
+                      <SelectItem value={NO_TEAM_VALUE}>No Team</SelectItem>
                       {teams.map((team) => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -269,10 +311,18 @@ export default function AdminUsers() {
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                void deleteUser(deleteConfirm.id);
-                toast({ title: "User deleted" });
-                setDeleteConfirm(null);
+              onClick={async () => {
+                try {
+                  await deleteUser(deleteConfirm.id);
+                  toast({ title: "User deleted" });
+                  setDeleteConfirm(null);
+                } catch (error) {
+                  toast({
+                    title: "Failed to delete user",
+                    description: getErrorMessage(error, "Unable to delete user."),
+                    variant: "destructive",
+                  });
+                }
               }}
             >
               Delete

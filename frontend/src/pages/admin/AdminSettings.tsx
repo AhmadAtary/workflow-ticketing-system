@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SystemSettingsDefaultLanguage } from "@flowdesk/api-client";
+import type { SystemSettingsDefaultLanguage, UpdateSettingsBody } from "@flowdesk/api-client";
 import { Settings, Mail, Globe, Palette, Shield, Save } from "lucide-react";
 import { useData } from "../../contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function AdminSettings() {
   const { settings, updateSettings } = useData();
   const { toast } = useToast();
+  const [savingSection, setSavingSection] = useState<"general" | "mail" | "branding" | null>(null);
   const [general, setGeneral] = useState<{
     companyName: string;
     defaultLanguage: SystemSettingsDefaultLanguage;
@@ -65,19 +66,49 @@ export default function AdminSettings() {
     });
   }, [settings]);
 
-  const saveGeneral = () => {
-    void updateSettings({ ...general });
-    toast({ title: "General settings saved" });
+  const saveSettings = async (
+    section: "general" | "mail" | "branding",
+    payload: UpdateSettingsBody,
+    successTitle: string,
+  ) => {
+    setSavingSection(section);
+
+    try {
+      await updateSettings(payload);
+      toast({ title: successTitle });
+    } catch {
+      toast({
+        title: "Failed to save settings",
+        description: "Please review the values and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSection(null);
+    }
   };
 
-  const saveMail = () => {
-    void updateSettings({ ...mail });
-    toast({ title: "Mail settings saved" });
+  const saveGeneral = async () => {
+    await saveSettings("general", { ...general }, "General settings saved");
   };
 
-  const saveBranding = () => {
-    void updateSettings({ ...branding });
-    toast({ title: "Branding settings saved" });
+  const saveMail = async () => {
+    const payload: UpdateSettingsBody = {
+      emailEnabled: mail.emailEnabled,
+      emailHost: mail.emailHost,
+      emailPort: mail.emailPort,
+      emailFrom: mail.emailFrom,
+      emailUser: mail.emailUser,
+    };
+
+    if (mail.emailPassword.trim()) {
+      payload.emailPassword = mail.emailPassword;
+    }
+
+    await saveSettings("mail", payload, "Mail settings saved");
+  };
+
+  const saveBranding = async () => {
+    await saveSettings("branding", { ...branding }, "Branding settings saved");
   };
 
   const roles = [
@@ -131,7 +162,10 @@ export default function AdminSettings() {
                 </div>
                 <Switch checked={general.requireEmailVerification} onCheckedChange={(value) => setGeneral((current) => ({ ...current, requireEmailVerification: value }))} />
               </div>
-              <Button onClick={saveGeneral}><Save className="h-4 w-4 mr-2" /> Save General Settings</Button>
+              <Button onClick={() => void saveGeneral()} disabled={savingSection === "general"}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingSection === "general" ? "Saving..." : "Save General Settings"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -171,7 +205,10 @@ export default function AdminSettings() {
                   <Input type="password" value={mail.emailPassword} onChange={(event) => setMail((current) => ({ ...current, emailPassword: event.target.value }))} placeholder="SMTP password" className="mt-1" disabled={!mail.emailEnabled} />
                 </div>
               </div>
-              <Button onClick={saveMail} disabled={!mail.emailEnabled}><Save className="h-4 w-4 mr-2" /> Save Mail Settings</Button>
+              <Button onClick={() => void saveMail()} disabled={savingSection === "mail"}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingSection === "mail" ? "Saving..." : "Save Mail Settings"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -193,7 +230,10 @@ export default function AdminSettings() {
                 <Label>Logo URL</Label>
                 <Input value={branding.logoUrl} onChange={(event) => setBranding((current) => ({ ...current, logoUrl: event.target.value }))} placeholder="https://..." className="mt-1 max-w-sm" />
               </div>
-              <Button onClick={saveBranding}><Save className="h-4 w-4 mr-2" /> Save Branding</Button>
+              <Button onClick={() => void saveBranding()} disabled={savingSection === "branding"}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingSection === "branding" ? "Saving..." : "Save Branding"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -244,7 +284,10 @@ export default function AdminSettings() {
                 </Select>
                 <p className="text-xs text-muted-foreground mt-2">Sets the default interface language for new users</p>
               </div>
-              <Button onClick={saveGeneral}><Save className="h-4 w-4 mr-2" /> Save Language</Button>
+              <Button onClick={() => void saveGeneral()} disabled={savingSection === "general"}>
+                <Save className="h-4 w-4 mr-2" />
+                {savingSection === "general" ? "Saving..." : "Save Language"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

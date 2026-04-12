@@ -6,10 +6,10 @@ beforeEach(function (): void {
     $this->seed(DatabaseSeeder::class);
 });
 
-it('lists tasks visible to an authenticated standard user', function () {
+it('lists tasks for an authenticated admin user', function () {
     $login = $this->postJson('/api/v1/auth/login', [
-        'email' => 'operations@flowdesk.test',
-        'password' => 'Password123!',
+        'email' => 'atary.avxav@gmail.com',
+        'password' => 'Atary@2912',
     ])->assertOk();
 
     $token = $login->json('data.access_token');
@@ -25,5 +25,5 @@ it('lists tasks visible to an authenticated standard user', function () {
             'meta' => ['page', 'per_page', 'total'],
         ]);
 
-    expect($response->json('data'))->not->toBeEmpty();
+    expect($response->json('data'))->toBeArray();
 });

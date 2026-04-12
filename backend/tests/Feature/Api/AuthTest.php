@@ -8,13 +8,13 @@ beforeEach(function (): void {
 
 it('logs in with seeded credentials and returns the authenticated user payload', function () {
     $response = $this->postJson('/api/v1/auth/login', [
-        'email' => 'admin@flowdesk.test',
-        'password' => 'Password123!',
+        'email' => 'atary.avxav@gmail.com',
+        'password' => 'Atary@2912',
     ]);
 
     $response
         ->assertOk()
-        ->assertJsonPath('data.user.email', 'admin@flowdesk.test')
+        ->assertJsonPath('data.user.email', 'atary.avxav@gmail.com')
         ->assertJsonPath('data.token_type', 'Bearer')
         ->assertJsonStructure([
             'data' => [

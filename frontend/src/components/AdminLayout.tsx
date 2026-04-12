@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, CheckSquare, Users, Building2, GitMerge, FileText, Settings, Bell, LogOut, Menu, PieChart } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useData } from "../contexts/DataContext";
+import { useBranding } from "@/app/branding";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
@@ -10,10 +11,13 @@ import { cn } from "@/lib/utils";
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
-  const { notifications } = useData();
+  const { notifications, settings } = useData();
+  const branding = useBranding();
   const [collapsed, setCollapsed] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const companyName = settings?.companyName || branding.companyName;
+  const logoUrl = settings?.logoUrl || branding.logoUrl;
 
   const navItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -36,7 +40,21 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-          {!collapsed && <span className="font-bold text-lg text-sidebar-foreground tracking-tight">FlowDesk</span>}
+          {!collapsed && (
+            <div className="flex min-w-0 items-center gap-2">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={`${companyName} logo`}
+                  className="h-7 w-7 rounded object-contain bg-white/90 p-0.5"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : null}
+              <span className="font-bold text-lg text-sidebar-foreground tracking-tight truncate">{companyName}</span>
+            </div>
+          )}
           <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ml-auto">
             <Menu className="h-5 w-5" />
           </Button>

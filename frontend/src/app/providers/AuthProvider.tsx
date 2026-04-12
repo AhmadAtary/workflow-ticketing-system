@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   accessToken: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<string | null>;
   request: <T>(path: string, init?: ApiRequestInit, options?: { retryOnUnauthorized?: boolean }) => Promise<T>;
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await requestJson<ApiEnvelope<SessionPayload>>("/auth/login", {
       method: "POST",
       body: { email, password },
@@ -106,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     applySession(response.data);
+
+    return response.data.user;
   };
 
   const logout = async () => {

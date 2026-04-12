@@ -1,16 +1,18 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ActivityItem,
   EmailTemplate,
   Notification,
   SystemSettings,
+  UpdateSettingsBody,
   TaskDetail,
   Team,
   User,
   Workflow,
 } from "@flowdesk/api-client";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { applyBrandingFromSettings } from "@/app/branding";
 import type { ApiEnvelope, ApiPaginatedEnvelope } from "@/shared/api/http";
 
 type TaskLike = Partial<TaskDetail> & Pick<TaskDetail, "title" | "priority" | "workflowId">;
@@ -50,7 +52,7 @@ interface DataContextType {
   addEmailTemplate: (template: EmailTemplateLike) => Promise<void>;
   updateEmailTemplate: (id: string, updates: Partial<EmailTemplate>) => Promise<void>;
   deleteEmailTemplate: (id: string) => Promise<void>;
-  updateSettings: (updates: Partial<SystemSettings>) => Promise<void>;
+  updateSettings: (updates: UpdateSettingsBody) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -64,6 +66,10 @@ function ensureTaskShape(task: Partial<TaskDetail>): TaskDetail {
     attachments: [],
     ...task,
   } as TaskDetail;
+}
+
+function normalizeOptionalId(value: string | null | undefined): string | undefined {
+  return value && value.trim() !== "" ? value : undefined;
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -143,6 +149,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return response.data;
     },
   });
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    applyBrandingFromSettings(settingsQuery.data);
+  }, [isAuthenticated, settingsQuery.data]);
 
   const invalidateTaskRelated = async () => {
     await Promise.all([
@@ -261,51 +275,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addUser = async (userInput: UserLike) => {
-    try {
-      await request("/users", {
-        method: "POST",
-        body: {
-          name: userInput.name,
-          email: userInput.email,
-          password: userInput.password || "ChangeMe123!",
-          role: userInput.role,
-          teamId: userInput.teamId,
-        },
-      });
+    await request("/users", {
+      method: "POST",
+      body: {
+        name: userInput.name,
+        email: userInput.email,
+        password: userInput.password || "ChangeMe123!",
+        role: userInput.role,
+        teamId: normalizeOptionalId(userInput.teamId),
+      },
+    });
 
-      await queryClient.invalidateQueries({ queryKey: ["users"] });
-    } catch (error) {
-      console.error("Failed to create user", error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["users"] });
   };
 
   const updateUser = async (id: string, updates: Partial<User> & { password?: string }) => {
-    try {
-      await request(`/users/${id}`, {
-        method: "PUT",
-        body: {
-          name: updates.name,
-          email: updates.email,
-          role: updates.role,
-          teamId: updates.teamId,
-          status: updates.status,
-          password: updates.password,
-        },
-      });
+    await request(`/users/${id}`, {
+      method: "PUT",
+      body: {
+        name: updates.name,
+        email: updates.email,
+        role: updates.role,
+        teamId: normalizeOptionalId(updates.teamId),
+        status: updates.status,
+        password: updates.password,
+      },
+    });
 
-      await queryClient.invalidateQueries({ queryKey: ["users"] });
-    } catch (error) {
-      console.error("Failed to update user", error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["users"] });
   };
 
   const deleteUser = async (id: string) => {
-    try {
-      await request(`/users/${id}`, { method: "DELETE" });
-      await queryClient.invalidateQueries({ queryKey: ["users"] });
-    } catch (error) {
-      console.error("Failed to delete user", error);
-    }
+    await request(`/users/${id}`, { method: "DELETE" });
+    await queryClient.invalidateQueries({ queryKey: ["users"] });
   };
 
   const addTeam = async (team: TeamLike) => {
@@ -352,64 +354,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addWorkflow = async (workflow: WorkflowLike) => {
-    try {
-      await request("/workflows", {
-        method: "POST",
-        body: {
-          name: workflow.name,
-          description: workflow.description,
-          status: workflow.status,
-          steps: (workflow.steps || []).map((step, index) => ({
-            id: step.id?.startsWith("new-") ? undefined : step.id,
-            name: step.name,
-            description: step.description,
-            teamId: step.teamId,
-            stepType: step.stepType,
-            required: step.required,
-            order: index + 1,
-          })),
-        },
-      });
+    await request("/workflows", {
+      method: "POST",
+      body: {
+        name: workflow.name,
+        description: workflow.description,
+        status: workflow.status,
+        steps: (workflow.steps || []).map((step, index) => ({
+          id: step.id?.startsWith("new-") ? undefined : step.id,
+          name: step.name,
+          description: step.description,
+          teamId: normalizeOptionalId(step.teamId),
+          stepType: step.stepType,
+          required: step.required,
+          order: index + 1,
+        })),
+      },
+    });
 
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } catch (error) {
-      console.error("Failed to create workflow", error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["workflows"] });
   };
 
   const updateWorkflow = async (id: string, updates: Partial<Workflow>) => {
-    try {
-      await request(`/workflows/${id}`, {
-        method: "PUT",
-        body: {
-          name: updates.name,
-          description: updates.description,
-          status: updates.status,
-          steps: updates.steps?.map((step, index) => ({
-            id: step.id?.startsWith("new-") ? undefined : step.id,
-            name: step.name,
-            description: step.description,
-            teamId: step.teamId,
-            stepType: step.stepType,
-            required: step.required,
-            order: index + 1,
-          })),
-        },
-      });
+    await request(`/workflows/${id}`, {
+      method: "PUT",
+      body: {
+        name: updates.name,
+        description: updates.description,
+        status: updates.status,
+        steps: updates.steps?.map((step, index) => ({
+          id: step.id?.startsWith("new-") ? undefined : step.id,
+          name: step.name,
+          description: step.description,
+          teamId: normalizeOptionalId(step.teamId),
+          stepType: step.stepType,
+          required: step.required,
+          order: index + 1,
+        })),
+      },
+    });
 
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } catch (error) {
-      console.error("Failed to update workflow", error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["workflows"] });
   };
 
   const deleteWorkflow = async (id: string) => {
-    try {
-      await request(`/workflows/${id}`, { method: "DELETE" });
-      await queryClient.invalidateQueries({ queryKey: ["workflows"] });
-    } catch (error) {
-      console.error("Failed to delete workflow", error);
-    }
+    await request(`/workflows/${id}`, { method: "DELETE" });
+    await queryClient.invalidateQueries({ queryKey: ["workflows"] });
   };
 
   const markNotificationRead = async (id: string) => {
@@ -479,17 +469,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateSettings = async (updates: Partial<SystemSettings>) => {
-    try {
-      await request("/settings", {
-        method: "PUT",
-        body: updates,
-      });
+  const updateSettings = async (updates: UpdateSettingsBody) => {
+    await request("/settings", {
+      method: "PUT",
+      body: { ...updates },
+    });
 
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-    } catch (error) {
-      console.error("Failed to update settings", error);
-    }
+    await queryClient.invalidateQueries({ queryKey: ["settings"] });
   };
 
   return (
