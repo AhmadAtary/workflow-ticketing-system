@@ -137,7 +137,7 @@ docker compose up --build
 
 Services:
 
-- `nginx` on `http://localhost:8080`
+- `nginx` on `http://localhost:8082`
 - `app` for Laravel PHP-FPM
 - `queue` for queued jobs
 - `scheduler` for scheduled tasks
